@@ -59,7 +59,7 @@ class Plugin(object):
         # Fix the first character
         name = re.sub(r'^[^A-Za-z_]', '_', name)
         # Fix the rest
-        name = re.sub(r'^[^A-Za-z0-9_]', '_', name)
+        name = re.sub(r'[^A-Za-z0-9_]', '_', name)
         # Largest fieldname is 19 characters
         return name[:19]
 
