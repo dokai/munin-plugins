@@ -40,6 +40,7 @@ A simple example::
 For more complex uses, read the code. It's short.
 """
 
+import re
 import os
 import sys
 
