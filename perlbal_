@@ -101,7 +101,7 @@ class Perlbal(munin.Plugin):
             codes.update(data['responsecodes'].keys())
 
         for code in sorted(codes):
-            cid = self.fieldname('code_%s' % code)
+            cid = 'code_%s' % code
             config.extend([('%s.label' % cid, code),
                            ('%s.type' % cid, 'DERIVE'),
                            ('%s.min' % cid, '0')])
@@ -116,7 +116,7 @@ class Perlbal(munin.Plugin):
                 codes[code] = codes.get(code, 0) + value
 
         for code, value in codes.iteritems():
-            yield (self.fieldname('code_%s.value' % code), value)
+            yield ('code_%s.value' % code, value)
 
     def fetch(self, args):
         if not args:
