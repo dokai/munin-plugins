@@ -92,18 +92,18 @@ class Plugin(object):
     
     def main(self, argv):
         if "_" in argv[0]: 
-            _, arg = argv[0].rsplit("_", 1)
+            script_args = argv[0].split("_")[1:]
         else:
-            arg = None
+            script_args = []
         args = argv[1:]
         
         if "suggest" in args and hasattr(self, "suggest"):
-            for suggested in self.__get_dynamic_attr("suggest", arg):
+            for suggested in self.__get_dynamic_attr("suggest", script_args):
                 print suggested
             return 0
                 
         if "autoconf" in args:
-            if self.__get_dynamic_attr("autoconf", arg, True):
+            if self.__get_dynamic_attr("autoconf", script_args, True):
                 print "yes"
                 return 0
             else:
@@ -111,11 +111,11 @@ class Plugin(object):
                 return 1
                 
         if "config" in args:
-            for field, value in self.__get_dynamic_attr("config", arg, []):
+            for field, value in self.__get_dynamic_attr("config", script_args, []):
                 print "%s %s" % (field, value)
             return 0
         
-        for field, value in self.__get_dynamic_attr("fetch", arg, []):
+        for field, value in self.__get_dynamic_attr("fetch", script_args, []):
             print "%s %s" % (field, value)
         return 0
             
