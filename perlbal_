@@ -155,7 +155,7 @@ class Perlbal(munin.Plugin):
                     in data.splitlines()
                     if line != '.')
         
-        suggestions.update(['poolrequest_%s' % p for in pools])
+        suggestions.update(['poolrequest_%s' % p for p in pools])
         return suggestions
 
 if __name__ == '__main__':
