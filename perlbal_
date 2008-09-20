@@ -79,7 +79,8 @@ class Perlbal(munin.Plugin):
             beid = self.fieldname(be)
             config.extend([('%s.label' % beid, be),
                            ('%s.type' % beid, 'DERIVE'),
-                           ('%s.min' % beid, '0')])
+                           ('%s.min' % beid, '0'),
+                           ('%s.draw' % beid, 'STACK')])
 
         return config
 
@@ -104,7 +105,8 @@ class Perlbal(munin.Plugin):
             cid = 'code_%s' % code
             config.extend([('%s.label' % cid, code),
                            ('%s.type' % cid, 'DERIVE'),
-                           ('%s.min' % cid, '0')])
+                           ('%s.min' % cid, '0'),
+                           ('%s.draw' % cid, 'STACK')])
 
         return config
 
