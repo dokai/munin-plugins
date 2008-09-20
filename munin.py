@@ -92,7 +92,7 @@ class Plugin(object):
     
     def main(self, argv):
         if "_" in argv[0]: 
-            script_args = argv[0].split("_")[1:]
+            script_args = [a for a in argv[0].split("_")[1:] if a.strip()]
         else:
             script_args = []
         args = argv[1:]
