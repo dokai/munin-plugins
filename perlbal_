@@ -2,11 +2,12 @@
 """
 Munin script to monitor perlbal.
 
-Following the munin style, this reads argv[0] to get the name of the pool
-to monitor.
+Following the munin style, this reads argv[0] to decide what to monitor.
 
-Currently reports raw requests/second, but would be cool to break it down
-by response code/pool...
+Currently supported modes are:
+ - Number of requests in a given pool
+ - Number of requests per backend
+ - Number or requests per HTTP code
 """
 
 import telnetlib
@@ -23,17 +24,25 @@ class Perlbal(munin.Plugin):
     def _connect(self):
         return telnetlib.Telnet(self.env["host"], int(self.env["port"]))
     
-    def fetch(self, pool=None):
-        if not pool: return []
-        
+    @property
+    def backends(self):
+        """Returns the Perlbal backend information."""
         c = self._connect()
-        c.write("show pool %s\r\n"% pool)
-        data = c.read_until(".\r\n")
-        nodelines = data.strip().split("\r\n")[:-1]
-        nodes = (line.strip().split() for line in nodelines)
-        return [("requests.value", sum(int(reqs) for node, reqs in nodes))]
+        c.write('nodes\r\n')
+        data = c.read_until('.\r\n')
+        backends = {}
+        
+        for line in data.splitlines()[:-1]:
+            entries = line.split()
+            if len(entries) == 4:
+                backends.setdefault(entries[0], {}).setdefault(entries[1], {})[entries[2]] = int(entries[3])
+            elif len(entries) == 3:
+                backends.setdefault(entries[0], {})[entries[1]] = int(entries[2])
+        
+        c.close()
+        return backends
     
-    def config(self, pool=None):
+    def config_pool_requests(self, pool=None):
         if not pool: return []
         return [
             ('graph_title', 'Perlbal requests in pool %s' % pool),
@@ -47,18 +56,107 @@ class Perlbal(munin.Plugin):
             ('requests.min', '0'),
         ]
 
+    def fetch_pool_requests(self, pool=None):
+        if not pool: return []
+        
+        c = self._connect()
+        c.write("show pool %s\r\n"% pool)
+        data = c.read_until(".\r\n")
+        nodelines = data.strip().split("\r\n")[:-1]
+        nodes = (line.strip().split() for line in nodelines)
+        return [("requests.value", sum(int(reqs) for node, reqs in nodes))]
+
+    def config_requests_per_backend(self):
+        config = [
+            ('graph_title', 'Perlbal requests per backend'),
+            ('graph_args', '-l 0 --base 1000'),
+            ('graph_vlabel', 'Requests'),
+            ('graph_category', 'Perlbal'),
+            ('graph_info', 'Tracks the number of requests per backend'),
+            ]
+
+        for be in self.backends:
+            beid = self.fieldname(be)
+            config.extend([('%s.label' % beid, be),
+                           ('%s.type' % beid, 'DERIVE'),
+                           ('%s.min' % beid, '0')])
+
+        return config
+
+    def fetch_requests_per_backend(self):
+        for backend, data in self.backends.iteritems():
+            yield ('%s.value' % self.fieldname(backend), data.get('connects', 0))
+
+    def config_status_codes(self):
+        config = [
+            ('graph_title', 'Perlbal status codes'),
+            ('graph_args', '-l 0 --base 1000'),
+            ('graph_vlabel', 'HTTP status codes'),
+            ('graph_category', 'Perlbal'),
+            ('graph_info', 'Tracks the number of requests grouped by HTTP status codes'),
+            ]
+
+        codes = set()
+        for data in self.backends.itervalues():
+            codes.update(data['responsecodes'].keys())
+
+        for code in sorted(codes):
+            cid = self.fieldname('code_%s' % code)
+            config.extend([('%s.label' % cid, code),
+                           ('%s.type' % cid, 'DERIVE'),
+                           ('%s.min' % cid, '0')])
+
+        return config
+
+    def fetch_status_codes(self):
+        codes = {}
+        
+        for data in self.backends.itervalues():
+            for code, value in data.get('responsecodes', {}).iteritems():
+                codes[code] = codes.get(code, 0) + value
+
+        for code, value in codes.iteritems():
+            yield (self.fieldname('code_%s.value' % code), value)
+
+    def fetch(self, args):
+        if not args:
+            return []
+        if args[0] == 'responsecode':
+            return self.fetch_status_codes()
+        elif args[0] == 'backendrequest':
+            return self.fetch_requests_per_backend()
+        elif args[0] == 'poolrequest':
+            return self.fetch_pool_requests('_'.join(args[1:]))
+
+    def config(self, args):
+        if not args:
+            return []
+        if args[0] == 'responsecode':
+            return self.config_status_codes()
+        elif args[0] == 'backendrequest':
+            return self.config_requests_per_backend()
+        elif args[0] == 'poolrequest':
+            return self.config_pool_requests('_'.join(args[1:]))
+
     def autoconf(self):
         try:
             self._connect()
         except socket.error:
             return False
         return True
-    
+
     def suggest(self):
+        suggestions = set('responsecode', 'backendrequest')
         c = self._connect()
-        c.write("show pool\r\n")
-        data = c.read_until(".\r\n").strip()
-        return set(line.strip().split()[0] for line in data.split("\r\n") if line != '.')
-    
+        c.write('show pool\r\n')
+        data = c.read_until('.\r\n').strip()
+        pools = set(line.strip().split()[0]
+                    for line
+                    in data.splitlines()
+                    if line != '.')
+        
+        suggestions.update(['poolrequest_%s' % p for in pools])
+        return suggestions
+
 if __name__ == '__main__':
     munin.run(Perlbal)
