@@ -17,8 +17,8 @@ import munin
 class Perlbal(munin.Plugin):
     
     env_vars = {
-        "host": "localhost",
-        "port": "60000"
+        "host": "192.168.0.110",
+        "port": "9999"
     }
     
     def _connect(self):
