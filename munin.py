@@ -49,7 +49,21 @@ class Plugin(object):
         self.env = {}
         for var, default in self.__get_dynamic_attr("env_vars", None, {}).items():
             self.env[var] = os.environ.get(var, default)
+    
+    def fieldname(self, name):
+        """Returns a valid fieldname.
         
+        See http://munin.projects.linpro.no/wiki/notes_on_datasource_names for
+        details.
+        """
+        # Fix the first character
+        name = re.sub(r'^[^A-Za-z_]', '_', name)
+        # Fix the rest
+        name = re.sub(r'^[^A-Za-z0-9_]', '_', name)
+        # Largest fieldname is 19 characters
+        return name[:19]
+
+
     def __get_dynamic_attr(self, attname, arg, default=None):
         """
         Gets "something" from self, which could be an attribute or
