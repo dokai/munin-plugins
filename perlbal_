@@ -120,7 +120,7 @@ class Perlbal(munin.Plugin):
                 codes[code] = codes.get(code, 0) + value
 
         for code in HTTP_STATUS_CODES:
-            yield ('code_%s.value' % code, codes.get(code, 0))
+            yield ('code_%s.value' % code, codes.get(str(code), 0))
 
     def fetch(self, args):
         if not args:
