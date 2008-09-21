@@ -14,6 +14,12 @@ import telnetlib
 import socket
 import munin
 
+from BaseHTTPServer import BaseHTTPRequestHandler
+
+# You may want to modify these to a group of relevant codes.
+#HTTP_STATUS_CODES = set(BaseHTTPRequestHandler.responses.keys())
+HTTP_STATUS_CODES = set([200, 304, 404, 503])
+
 class Perlbal(munin.Plugin):
     
     env_vars = {
@@ -97,11 +103,7 @@ class Perlbal(munin.Plugin):
             ('graph_info', 'Tracks the number of requests grouped by HTTP status codes'),
             ]
 
-        codes = set()
-        for data in self.backends.itervalues():
-            codes.update(data['responsecodes'].keys())
-
-        for code in sorted(codes):
+        for code in sorted(HTTP_STATUS_CODES):
             cid = 'code_%s' % code
             config.extend([('%s.label' % cid, code),
                            ('%s.type' % cid, 'DERIVE'),
@@ -117,8 +119,8 @@ class Perlbal(munin.Plugin):
             for code, value in data.get('responsecodes', {}).iteritems():
                 codes[code] = codes.get(code, 0) + value
 
-        for code, value in codes.iteritems():
-            yield ('code_%s.value' % code, value)
+        for code in HTTP_STATUS_CODES:
+            yield ('code_%s.value' % code, codes.get(code, 0))
 
     def fetch(self, args):
         if not args:
